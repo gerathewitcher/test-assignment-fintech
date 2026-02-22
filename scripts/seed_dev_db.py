@@ -142,6 +142,7 @@ async def reset_data(conn: asyncpg.Connection) -> None:
         """
         TRUNCATE TABLE
             organization_phone_number,
+            organization_activity,
             organization,
             activity,
             building
@@ -205,6 +206,21 @@ async def seed_activities(conn: asyncpg.Connection) -> list[UUID]:
     return activity_ids
 
 
+async def get_leaf_activity_ids(conn: asyncpg.Connection) -> list[UUID]:
+    rows = await conn.fetch(
+        """
+        SELECT a.id
+        FROM activity AS a
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM activity AS child
+            WHERE child.parent_id = a.id
+        )
+        """
+    )
+    return [row["id"] for row in rows]
+
+
 async def insert_building(conn: asyncpg.Connection, *, idx: int) -> UUID:
     address = (
         f"{random.randint(1, 9999)} {random.choice(STREETS)}, "
@@ -238,7 +254,6 @@ async def insert_organization(
     conn: asyncpg.Connection,
     *,
     idx: int,
-    activity_id: UUID,
     activity_name: str,
     building_id: UUID | None,
 ) -> UUID:
@@ -247,18 +262,34 @@ async def insert_organization(
     created_at = datetime(2025, 2, 1, 9, 0, tzinfo=UTC) + timedelta(minutes=idx * 3)
     row = await conn.fetchrow(
         """
-        INSERT INTO organization (id, name, building_id, activity_id, created_at)
-        VALUES (gen_random_uuid(), $1, $2, $3, $4)
+        INSERT INTO organization (id, name, building_id, created_at)
+        VALUES (gen_random_uuid(), $1, $2, $3)
         RETURNING id
         """,
         name,
         building_id,
-        activity_id,
         created_at,
     )
     if row is None:
         raise RuntimeError("Failed to insert organization")
     return row["id"]
+
+
+async def insert_organization_activity(
+    conn: asyncpg.Connection,
+    *,
+    organization_id: UUID,
+    activity_id: UUID,
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO organization_activity (organization_id, activity_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+        """,
+        organization_id,
+        activity_id,
+    )
 
 
 async def insert_organization_phone(
@@ -291,6 +322,10 @@ async def seed(profile: SeedProfile, *, reset: bool, random_seed: int) -> None:
             await reset_data(conn)
 
         activity_ids = await seed_activities(conn)
+        leaf_activity_ids = await get_leaf_activity_ids(conn)
+        if not leaf_activity_ids:
+            leaf_activity_ids = activity_ids
+
         activity_name_by_id = {
             row["id"]: row["name"]
             for row in await conn.fetch("SELECT id, name FROM activity")
@@ -301,22 +336,44 @@ async def seed(profile: SeedProfile, *, reset: bool, random_seed: int) -> None:
             building_ids.append(await insert_building(conn, idx=idx))
 
         org_count = 0
+        organization_activity_count = 0
         phone_count = 0
         for idx in range(1, profile.organizations + 1):
-            activity_id = random.choice(activity_ids)
-            activity_name = activity_name_by_id.get(
-                activity_id, "Information Technology"
+            primary_activity_id = random.choice(leaf_activity_ids)
+            primary_activity_name = activity_name_by_id.get(
+                primary_activity_id, "Information Technology"
             )
             building_id = random.choice(building_ids)
 
             org_id = await insert_organization(
                 conn,
                 idx=idx,
-                activity_id=activity_id,
-                activity_name=activity_name,
+                activity_name=primary_activity_name,
                 building_id=building_id,
             )
             org_count += 1
+            linked_activity_ids: set[UUID] = {primary_activity_id}
+            extra_links_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+            if extra_links_count > 0:
+                remaining_activity_ids = [
+                    activity_id
+                    for activity_id in activity_ids
+                    if activity_id != primary_activity_id
+                ]
+                linked_activity_ids.update(
+                    random.sample(
+                        remaining_activity_ids,
+                        k=min(extra_links_count, len(remaining_activity_ids)),
+                    )
+                )
+
+            for linked_activity_id in linked_activity_ids:
+                await insert_organization_activity(
+                    conn,
+                    organization_id=org_id,
+                    activity_id=linked_activity_id,
+                )
+                organization_activity_count += 1
 
             for _ in range(random.choices([1, 2, 3], weights=[58, 32, 10], k=1)[0]):
                 await insert_organization_phone(conn, organization_id=org_id)
@@ -327,6 +384,7 @@ async def seed(profile: SeedProfile, *, reset: bool, random_seed: int) -> None:
             f"  profile={profile}\n"
             f"  buildings={len(building_ids)}\n"
             f"  organizations={org_count}\n"
+            f"  organization_activities={organization_activity_count}\n"
             f"  phone_numbers={phone_count}"
         )
     finally:

@@ -10,6 +10,7 @@ async def reset() -> None:
             """
             TRUNCATE TABLE
                 organization_phone_number,
+                organization_activity,
                 organization,
                 activity,
                 building
