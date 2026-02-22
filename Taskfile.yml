@@ -29,4 +29,5 @@ tasks:
   run-integration-tests:
     desc: Run integration tests
     cmds:
+      - uv sync --extra test
       - uv run pytest tests/integration -o log_cli=true
