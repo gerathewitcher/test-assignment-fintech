@@ -13,19 +13,25 @@ Prerequisites:
 - `uv` (required): https://docs.astral.sh/uv/getting-started/installation/
 - `task` (optional, for Taskfile commands): https://taskfile.dev/installation/
 
-1. Start local PostgreSQL (PostGIS):
+1. Create `.env` from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+2. Start local PostgreSQL (PostGIS):
 
 ```bash
 docker compose up -d db
 ```
 
-2. Apply migrations:
+3. Apply migrations:
 
 ```bash
 uv run alembic upgrade head
 ```
 
-3. (Optional) Seed development data (New York organizations/buildings):
+4. (Optional) Seed development data (New York organizations/buildings):
 
 ```bash
 task db-seed
@@ -42,13 +48,13 @@ uv run python scripts/seed_dev_db.py --profile medium --reset
 uv run python scripts/reset_dev_db.py
 ```
 
-4. Run integration tests:
+5. Run integration tests:
 
 ```bash
 task run-integration-tests
 ```
 
-5. Run API server:
+6. Run API server:
 
 ```bash
 uv run start-app
