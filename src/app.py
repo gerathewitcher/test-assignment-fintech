@@ -28,8 +28,6 @@ class App:
         app = self.create_fastapi_app()
 
         container = make_async_container(AppProvider(), DatabaseProvider())
-        # database = await container.get(Database)
-        # await database.check_connection()
         setup_dishka(container, app)
 
         config = uvicorn.Config(app, host="0.0.0.0", port=settings.APP_PORT)
