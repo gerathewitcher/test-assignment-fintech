@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from httpx import AsyncClient
 
+from src.api.v1.constants import API_V1_DIRECTORY_PREFIX
 from tests.integration.factories.building_factory import (
     BuildingPayload,
     build_building_payload,
@@ -15,9 +16,13 @@ from tests.integration.fixtures.db import (
 )
 
 
+def _url(path: str) -> str:
+    return f"{API_V1_DIRECTORY_PREFIX}{path}"
+
+
 @pytest.mark.asyncio
 async def test_get_organizations_empty_list(client: AsyncClient) -> None:
-    response = await client.get("/organization")
+    response = await client.get(_url("/organization"))
 
     assert response.status_code == 200
     payload = response.json()
@@ -45,7 +50,7 @@ async def test_get_organizations_returns_items_with_relations(
         created_at=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
     )
 
-    response = await client.get("/organization?limit=10")
+    response = await client.get(_url("/organization?limit=10"))
 
     assert response.status_code == 200
     payload = response.json()
@@ -81,7 +86,7 @@ async def test_get_organizations_pagination_with_cursor(
         created_at=datetime(2025, 1, 1, 11, 0, tzinfo=timezone.utc),
     )
 
-    first_page = await client.get("/organization?limit=1")
+    first_page = await client.get(_url("/organization?limit=1"))
     assert first_page.status_code == 200
     first_payload = first_page.json()
     assert len(first_payload["items"]) == 1
@@ -89,7 +94,7 @@ async def test_get_organizations_pagination_with_cursor(
     assert first_payload["next_cursor"] is not None
 
     second_page = await client.get(
-        "/organization",
+        _url("/organization"),
         params={"limit": 1, "cursor": first_payload["next_cursor"]},
     )
     assert second_page.status_code == 200
@@ -103,7 +108,7 @@ async def test_get_organizations_pagination_with_cursor(
 async def test_get_organizations_invalid_cursor_returns_400(
     client: AsyncClient,
 ) -> None:
-    response = await client.get("/organization?cursor=not-a-valid-cursor")
+    response = await client.get(_url("/organization?cursor=not-a-valid-cursor"))
 
     assert response.status_code == 400
     payload = response.json()
@@ -135,7 +140,7 @@ async def test_get_organization_by_uuid(
         phone_number="+7 (495) 222-22-22",
     )
 
-    response = await client.get(f"/organization/{org_id}")
+    response = await client.get(_url(f"/organization/{org_id}"))
 
     assert response.status_code == 200
     payload = response.json()

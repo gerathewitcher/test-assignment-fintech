@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+from src.api.v1.constants import API_V1_DIRECTORY_PREFIX
 from tests.integration.factories.building_factory import (
     BuildingPayload,
     build_building_payload,
@@ -8,9 +9,13 @@ from tests.integration.factories.building_factory import (
 from tests.integration.fixtures.db import InsertBuildingFixture
 
 
+def _url(path: str) -> str:
+    return f"{API_V1_DIRECTORY_PREFIX}{path}"
+
+
 @pytest.mark.asyncio
 async def test_get_buildings_empty_list(client: AsyncClient) -> None:
-    response = await client.get("/building")
+    response = await client.get(_url("/building"))
 
     assert response.status_code == 200
     payload: dict = response.json()
@@ -28,7 +33,7 @@ async def test_get_buildings_from_factory_insert(
     await insert_building(**first)
     await insert_building(**second)
 
-    response = await client.get("/building?limit=10")
+    response = await client.get(_url("/building?limit=10"))
 
     assert response.status_code == 200
     payload: dict = response.json()
@@ -50,7 +55,7 @@ async def test_get_buildings_pagination_with_cursor(
     await insert_building(**first)
     await insert_building(**second)
 
-    first_page = await client.get("/building?limit=1")
+    first_page = await client.get(_url("/building?limit=1"))
     assert first_page.status_code == 200
     first_payload: dict = first_page.json()
     assert len(first_payload["items"]) == 1
@@ -58,7 +63,7 @@ async def test_get_buildings_pagination_with_cursor(
     assert first_payload["next_cursor"] is not None
 
     second_page = await client.get(
-        "/building",
+        _url("/building"),
         params={"limit": 1, "cursor": first_payload["next_cursor"]},
     )
     assert second_page.status_code == 200
@@ -70,7 +75,7 @@ async def test_get_buildings_pagination_with_cursor(
 
 @pytest.mark.asyncio
 async def test_get_buildings_invalid_cursor_returns_400(client: AsyncClient) -> None:
-    response = await client.get("/building?cursor=not-a-valid-cursor")
+    response = await client.get(_url("/building?cursor=not-a-valid-cursor"))
 
     assert response.status_code == 400
     payload: dict = response.json()

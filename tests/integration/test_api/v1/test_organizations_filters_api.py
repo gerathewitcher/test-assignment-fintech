@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 
+from src.api.v1.constants import API_V1_DIRECTORY_PREFIX
 from tests.integration.factories.building_factory import (
     BuildingPayload,
     build_building_payload,
@@ -20,6 +21,10 @@ class OrgFilterDataset(TypedDict):
     activity: dict[str, UUID]
     building: dict[str, UUID]
     org: dict[str, UUID]
+
+
+def _url(path: str) -> str:
+    return f"{API_V1_DIRECTORY_PREFIX}{path}"
 
 
 @pytest.fixture
@@ -137,7 +142,7 @@ async def test_get_organizations_filters(
             continue
         query_params[key] = value
 
-    response = await client.get("/organization", params=query_params)
+    response = await client.get(_url("/organization"), params=query_params)
 
     assert response.status_code == 200
     payload = response.json()
@@ -151,7 +156,7 @@ async def test_get_organizations_invalid_radius_params_returns_422(
     client: AsyncClient,
 ) -> None:
     response = await client.get(
-        "/organization",
+        _url("/organization"),
         params={
             "center_lat": "55.75",
             "center_long": "37.61",
