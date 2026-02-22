@@ -8,6 +8,35 @@ Full assignment description:
 - [English](docs/test-assignment.en.md)
 - [Russian](docs/test-assignment.ru.md)
 
+---
+
+## Assignment Checklist
+
+- [x] FastAPI + Pydantic + SQLAlchemy + Alembic stack
+- [x] Static API key authorization for all API endpoints
+- [x] Organizations directory with:
+  - [x] name
+  - [x] multiple phone numbers
+  - [x] building relation
+  - [x] multiple activity relations (many-to-many)
+- [x] Buildings with address and geo coordinates (PostGIS)
+- [x] Activity tree with max nesting depth = 3 (DB trigger)
+- [x] API methods:
+  - [x] list organizations
+  - [x] filter organizations by building
+  - [x] filter organizations by activity
+  - [x] activity filter with child activities support
+  - [x] organizations search by name
+  - [x] organizations in radius from a point
+  - [x] organizations in rectangular area (bbox)
+  - [x] organization details by id
+  - [x] buildings list
+- [x] OpenAPI + Swagger UI + ReDoc
+- [x] Dockerized app + database
+- [x] Integration tests for main API flows and filters
+
+---
+
 ## Local Development
 
 Prerequisites:
@@ -75,6 +104,8 @@ API base URL:
 http://localhost:8000
 ```
 
+---
+
 ## Full Run In Docker
 
 Run full stack (app + PostGIS):
@@ -83,6 +114,8 @@ Run full stack (app + PostGIS):
 docker compose up --build -d
 ```
 
+---
+
 ## API Documentation
 
 Interactive API docs are available after app startup:
@@ -90,6 +123,8 @@ Interactive API docs are available after app startup:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 - OpenAPI schema: `http://localhost:8000/openapi.json`
+
+---
 
 ## Authentication
 
