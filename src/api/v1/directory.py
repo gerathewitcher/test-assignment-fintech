@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import DishkaRoute
@@ -40,7 +41,7 @@ async def get_organizations(
 
 @router.get("/organization/{organization_uuid}", response_model=OrganizationFullSchema)
 async def get_organization(
-    organization_uuid: str,
+    organization_uuid: UUID,
     directory_service: FromDishka[DirectoryServiceProtocol],
 ):
     """Get organization by uuid"""
