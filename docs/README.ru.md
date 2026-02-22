@@ -1,10 +1,12 @@
+# Решение тестового задания на позицию Python-разработчика
+
 **Язык:** [English](../README.md) | Русский
 
 ## Задание
 
 Полное описание задания:
-- English: `test-assignment.en.md`
-- Русский: `test-assignment.ru.md`
+- [English](test-assignment.en.md)
+- [Русский](test-assignment.ru.md)
 
 ## Локальная разработка
 
@@ -13,25 +15,32 @@
 - `uv` (обязательно): https://docs.astral.sh/uv/getting-started/installation/
 - `task` (опционально, для команд из Taskfile): https://taskfile.dev/installation/
 
-1. Создайте `.env` на основе `.env.example`:
+1. Склонируйте репозиторий:
+
+```bash
+git clone https://github.com/gerathewitcher/test-assignment-fintech
+cd test-assignment-fintech
+```
+
+2. Создайте `.env` на основе `.env.example`:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Поднимите локальный PostgreSQL (PostGIS):
+3. Поднимите локальный PostgreSQL (PostGIS):
 
 ```bash
 docker compose up -d db
 ```
 
-3. Примените миграции:
+4. Примените миграции:
 
 ```bash
 uv run alembic upgrade head
 ```
 
-4. (Опционально) Заполните БД тестовыми данными (организации/здания в Нью-Йорке):
+5. (Опционально) Заполните БД тестовыми данными (организации/здания в Нью-Йорке):
 
 ```bash
 task db-seed
@@ -48,13 +57,13 @@ uv run python scripts/seed_dev_db.py --profile medium --reset
 uv run python scripts/reset_dev_db.py
 ```
 
-5. Запустите интеграционные тесты:
+6. Запустите интеграционные тесты:
 
 ```bash
 task run-integration-tests
 ```
 
-6. Запустите приложение:
+7. Запустите приложение:
 
 ```bash
 uv run start-app
