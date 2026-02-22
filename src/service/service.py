@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from src.dto import (
     BuildingFilter,
     Organization,
@@ -18,7 +20,7 @@ class DirectoryService:
         organizations = await self.directory_repository.get_organizations(filter)
         return organizations
 
-    async def get_organization(self, organization_uuid: str) -> Organization | None:
+    async def get_organization(self, organization_uuid: UUID) -> Organization | None:
         return await self.directory_repository.get_organization_by_uuid(
             organization_uuid
         )

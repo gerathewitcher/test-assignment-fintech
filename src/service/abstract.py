@@ -1,4 +1,5 @@
 from typing import Protocol
+from uuid import UUID
 
 from src.dto import (
     BuildingFilter,
@@ -14,6 +15,8 @@ class DirectoryServiceProtocol(Protocol):
         self, filter: OrganizationFilter
     ) -> PaginatedOrganizations: ...
 
-    async def get_organization(self, organization_uuid: str) -> Organization | None: ...
+    async def get_organization(
+        self, organization_uuid: UUID
+    ) -> Organization | None: ...
 
     async def get_buildings(self, filter: BuildingFilter) -> PaginatedBuildings: ...
