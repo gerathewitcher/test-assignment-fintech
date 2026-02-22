@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.dto import (
     Building,
@@ -11,6 +11,7 @@ from src.dto import (
     PaginatedBuildings,
     PaginatedOrganizations,
     PaginationParams,
+    WithinBoundingBoxFilter,
     WithinRadiusFilter,
 )
 
@@ -46,11 +47,13 @@ class OrganizationFullSchema(BaseModel):
     building: BuildingSchema | None = Field(
         description="Building associated with the organization"
     )
-    activity: ActivitySchema | None = Field(
-        description="Activity associated with the organization"
-    )
+
     phone_numbers: list[OrganizationPhoneNumberSchema] = Field(
         description="Phone numbers associated with the organization"
+    )
+
+    activities: list[ActivitySchema] = Field(
+        description="Activities associated with the organization"
     )
 
     @classmethod
@@ -66,14 +69,15 @@ class OrganizationFullSchema(BaseModel):
             )
             if dto.building
             else None,
-            activity=ActivitySchema(uuid=dto.activity.uuid, name=dto.activity.name)
-            if dto.activity
-            else None,
             phone_numbers=[
                 OrganizationPhoneNumberSchema(
                     number=phone_number.number,
                 )
                 for phone_number in dto.phone_numbers
+            ],
+            activities=[
+                ActivitySchema(uuid=activity.uuid, name=activity.name)
+                for activity in dto.activities
             ],
         )
 
@@ -83,9 +87,6 @@ class OrganizationSchema(BaseModel):
     name: str = Field(description="Name of the organization")
     building: BuildingSchema | None = Field(
         description="Building associated with the organization"
-    )
-    activity: ActivitySchema | None = Field(
-        description="Activity associated with the organization"
     )
 
     @classmethod
@@ -100,9 +101,6 @@ class OrganizationSchema(BaseModel):
                 coordinate_long=dto.building.coordinate_long,
             )
             if dto.building
-            else None,
-            activity=ActivitySchema(uuid=dto.activity.uuid, name=dto.activity.name)
-            if dto.activity
             else None,
         )
 
@@ -166,6 +164,30 @@ class OrganizationQueryParams(BaseModel):
         le=180,
         description="Longitude of search center for radius filter",
     )
+    min_lat: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Minimum latitude for rectangular area filter",
+    )
+    max_lat: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Maximum latitude for rectangular area filter",
+    )
+    min_long: float | None = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Minimum longitude for rectangular area filter",
+    )
+    max_long: float | None = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Maximum longitude for rectangular area filter",
+    )
     name: str | None = Field(
         default=None,
         min_length=1,
@@ -176,6 +198,42 @@ class OrganizationQueryParams(BaseModel):
         description="Cursor from the previous page (exclusive)",
     )
     limit: int = Field(default=20, ge=1, le=100, description="Page size")
+
+    @model_validator(mode="after")
+    def validate_geo_filters(self) -> "OrganizationQueryParams":
+        radius_values = [self.radius, self.center_lat, self.center_long]
+        bbox_values = [self.min_lat, self.max_lat, self.min_long, self.max_long]
+        has_radius_filter = any(value is not None for value in radius_values)
+        has_bbox_filter = any(value is not None for value in bbox_values)
+
+        if has_radius_filter and has_bbox_filter:
+            raise ValueError(
+                "Use either radius filter or rectangular area filter, not both"
+            )
+
+        if has_radius_filter and not all(value is not None for value in radius_values):
+            raise ValueError(
+                "Radius filter requires radius, center_lat and center_long"
+            )
+
+        if has_bbox_filter and not all(value is not None for value in bbox_values):
+            raise ValueError(
+                "Rectangular area filter requires min_lat, max_lat, min_long and max_long"
+            )
+
+        if has_bbox_filter:
+            assert self.min_lat is not None
+            assert self.max_lat is not None
+            assert self.min_long is not None
+            assert self.max_long is not None
+
+            if self.min_lat >= self.max_lat:
+                raise ValueError("min_lat must be less than max_lat")
+
+            if self.min_long >= self.max_long:
+                raise ValueError("min_long must be less than max_long")
+
+        return self
 
     def to_dto(self) -> OrganizationFilter:
         return OrganizationFilter(
@@ -195,6 +253,19 @@ class OrganizationQueryParams(BaseModel):
                 self.radius is not None
                 and self.center_lat is not None
                 and self.center_long is not None
+            )
+            else None,
+            within_bounding_box=WithinBoundingBoxFilter(
+                min_lat=self.min_lat,
+                max_lat=self.max_lat,
+                min_long=self.min_long,
+                max_long=self.max_long,
+            )
+            if (
+                self.min_lat is not None
+                and self.max_lat is not None
+                and self.min_long is not None
+                and self.max_long is not None
             )
             else None,
             name=self.name,
