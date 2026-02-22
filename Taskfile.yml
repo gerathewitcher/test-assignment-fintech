@@ -1,0 +1,32 @@
+version: "3"
+
+tasks:
+  db-seed:
+    desc: Seed local dev DB with small profile (reset first)
+    cmds:
+      - uv run python scripts/seed_dev_db.py --profile small --reset
+
+  db-seed-small:
+    desc: Seed local dev DB with small profile (reset first)
+    cmds:
+      - uv run python scripts/seed_dev_db.py --profile small --reset
+
+  db-seed-medium:
+    desc: Seed local dev DB with medium profile (reset first)
+    cmds:
+      - uv run python scripts/seed_dev_db.py --profile medium --reset
+
+  db-seed-large:
+    desc: Seed local dev DB with large profile (reset first)
+    cmds:
+      - uv run python scripts/seed_dev_db.py --profile large --reset
+
+  db-reset:
+    desc: Truncate dev data only
+    cmds:
+      - uv run python scripts/reset_dev_db.py
+
+  run-integration-tests:
+    desc: Run integration tests
+    cmds:
+      - uv run pytest tests/integration -o log_cli=true
