@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "test-assignment-fintech"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.4",
+    "asyncpg>=0.31.0",
+    "dishka>=1.8.0",
+    "fastapi>=0.129.0",
+    "geoalchemy2>=0.18.1",
+    "pydantic-settings>=2.13.1",
+    "sqlalchemy>=2.0.46",
+    "uvicorn>=0.41.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "httpx>=0.28.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.2.0",
+    "testcontainers[postgres]>=4.13.2",
+]
+
+[project.scripts]
+start-app = "src.main:main"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
