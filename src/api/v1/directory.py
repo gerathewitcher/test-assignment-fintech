@@ -9,6 +9,7 @@ from src.api.security import verify_api_key
 from src.dto import Organization
 from src.service import DirectoryServiceProtocol
 
+from .constants import API_V1_DIRECTORY_PREFIX
 from .schema import (
     BuildingPageSchema,
     BuildingQueryParams,
@@ -18,7 +19,7 @@ from .schema import (
 )
 
 router = APIRouter(
-    prefix="/api/v1/directory",
+    prefix=API_V1_DIRECTORY_PREFIX,
     route_class=DishkaRoute,
     dependencies=[Depends(verify_api_key)],
 )
