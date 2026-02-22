@@ -25,6 +25,7 @@ from .model import (
     Building as BuildingModel,
 )
 from .model import Organization as OrganizationModel
+from .model import OrganizationActivity as OrganizationActivityModel
 from .model import OrganizationPhoneNumber as OrganizationPhoneNumberModel
 
 
@@ -54,21 +55,15 @@ class PostgresDirectoryRepository:
     ) -> PaginatedOrganizations:
         """Get organization list"""
         page_size = filter.pagination.limit
-        stmt = (
-            Select(
-                OrganizationModel.id.label("org_id"),
-                OrganizationModel.created_at.label("org_created_at"),
-                OrganizationModel.name.label("org_name"),
-                ActivityModel.id.label("act_id"),
-                ActivityModel.name.label("act_name"),
-                BuildingModel.id.label("bld_id"),
-                BuildingModel.address.label("bld_address"),
-                func.ST_Y(cast(BuildingModel.location, Geometry)).label("bld_lat"),
-                func.ST_X(cast(BuildingModel.location, Geometry)).label("bld_lon"),
-            )
-            .join(ActivityModel)
-            .join(BuildingModel)
-        )
+        stmt = Select(
+            OrganizationModel.id.label("org_id"),
+            OrganizationModel.created_at.label("org_created_at"),
+            OrganizationModel.name.label("org_name"),
+            BuildingModel.id.label("bld_id"),
+            BuildingModel.address.label("bld_address"),
+            func.ST_Y(cast(BuildingModel.location, Geometry)).label("bld_lat"),
+            func.ST_X(cast(BuildingModel.location, Geometry)).label("bld_lon"),
+        ).outerjoin(BuildingModel)
 
         if filter.name:
             stmt = stmt.where(OrganizationModel.name.ilike(f"%{filter.name}%"))
@@ -82,14 +77,33 @@ class PostgresDirectoryRepository:
                     ActivityModel.parent_id == filter.activity.activity_uuid
                 )
                 stmt = stmt.where(
-                    or_(
-                        ActivityModel.id == filter.activity.activity_uuid,
-                        ActivityModel.parent_id == filter.activity.activity_uuid,
-                        ActivityModel.parent_id.in_(children_subquery),
+                    select(OrganizationActivityModel.organization_id)
+                    .join(
+                        ActivityModel,
+                        ActivityModel.id == OrganizationActivityModel.activity_id,
                     )
+                    .where(
+                        OrganizationActivityModel.organization_id
+                        == OrganizationModel.id,
+                        or_(
+                            ActivityModel.id == filter.activity.activity_uuid,
+                            ActivityModel.parent_id == filter.activity.activity_uuid,
+                            ActivityModel.parent_id.in_(children_subquery),
+                        ),
+                    )
+                    .exists()
                 )
             else:
-                stmt = stmt.where(ActivityModel.id == filter.activity.activity_uuid)
+                stmt = stmt.where(
+                    select(OrganizationActivityModel.organization_id)
+                    .where(
+                        OrganizationActivityModel.organization_id
+                        == OrganizationModel.id,
+                        OrganizationActivityModel.activity_id
+                        == filter.activity.activity_uuid,
+                    )
+                    .exists()
+                )
 
         if filter.within_radius:
             stmt = stmt.where(
@@ -106,6 +120,20 @@ class PostgresDirectoryRepository:
                         Geometry("POINT", srid=4326),
                     ),
                     filter.within_radius.radius,
+                )
+            )
+
+        if filter.within_bounding_box:
+            stmt = stmt.where(
+                func.ST_Within(
+                    cast(BuildingModel.location, Geometry),
+                    func.ST_MakeEnvelope(
+                        filter.within_bounding_box.min_long,
+                        filter.within_bounding_box.min_lat,
+                        filter.within_bounding_box.max_long,
+                        filter.within_bounding_box.max_lat,
+                        4326,
+                    ),
                 )
             )
 
@@ -138,9 +166,6 @@ class PostgresDirectoryRepository:
                     uuid=row.org_id,
                     name=row.org_name,
                     phone_numbers=[],
-                    activity=Activity(uuid=row.act_id, name=row.act_name)
-                    if row.act_id
-                    else None,
                     building=Building(
                         uuid=row.bld_id,
                         address=row.bld_address,
@@ -163,26 +188,34 @@ class PostgresDirectoryRepository:
         return PaginatedOrganizations(items=organizations, next_cursor=next_cursor)
 
     async def get_organization_by_uuid(
-        self, organization_uuid: str
+        self, organization_uuid: UUID
     ) -> Organization | None:
         """Get detail info about organization by uuid"""
         org_stmt = (
             Select(
                 OrganizationModel.id.label("org_id"),
                 OrganizationModel.name.label("org_name"),
-                ActivityModel.id.label("act_id"),
-                ActivityModel.name.label("act_name"),
                 BuildingModel.id.label("bld_id"),
                 BuildingModel.address.label("bld_address"),
                 func.ST_Y(cast(BuildingModel.location, Geometry)).label("bld_lat"),
                 func.ST_X(cast(BuildingModel.location, Geometry)).label("bld_lon"),
-            )
-            .join(ActivityModel)
-            .join(BuildingModel)
+            ).outerjoin(BuildingModel)
         ).where(OrganizationModel.id == organization_uuid)
 
         numbers_stmt = Select(OrganizationPhoneNumberModel).where(
             OrganizationPhoneNumberModel.organization_id == organization_uuid
+        )
+        activities_stmt = (
+            Select(
+                ActivityModel.id.label("act_id"),
+                ActivityModel.name.label("act_name"),
+            )
+            .join(
+                OrganizationActivityModel,
+                OrganizationActivityModel.activity_id == ActivityModel.id,
+            )
+            .where(OrganizationActivityModel.organization_id == organization_uuid)
+            .order_by(ActivityModel.name.asc(), ActivityModel.id.asc())
         )
 
         org_result = await self.database.fetch_one(org_stmt)
@@ -192,15 +225,17 @@ class PostgresDirectoryRepository:
                 OrganizationPhoneNumber(number=org_number.phone_number)
                 for org_number in await self.database.fetch_all(numbers_stmt)
             ]
+            activities = [
+                Activity(uuid=activity.act_id, name=activity.act_name)
+                for activity in await self.database.fetch_all(activities_stmt)
+            ]
 
             return (
                 Organization(
                     uuid=org_result.org_id,
                     name=org_result.org_name,
                     phone_numbers=phone_numbers,
-                    activity=Activity(uuid=org_result.act_id, name=org_result.act_name)
-                    if org_result.act_id
-                    else None,
+                    activities=activities,
                     building=Building(
                         uuid=org_result.bld_id,
                         address=org_result.bld_address,

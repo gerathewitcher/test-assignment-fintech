@@ -2,7 +2,7 @@ import datetime
 import uuid
 
 from geoalchemy2 import Geography
-from sqlalchemy import VARCHAR, DateTime, ForeignKey, Index, text
+from sqlalchemy import VARCHAR, DateTime, ForeignKey, Index, PrimaryKeyConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,13 +33,6 @@ class Organization(Base):
     building_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("building.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-
-    activity_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("activity.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -91,6 +84,25 @@ class Activity(Base):
         UUID(as_uuid=True),
         ForeignKey("activity.id", ondelete="CASCADE"),
         nullable=True,
+        index=True,
+    )
+
+
+class OrganizationActivity(Base):
+    __tablename__ = "organization_activity"
+    __table_args__ = (PrimaryKeyConstraint("organization_id", "activity_id"),)
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    activity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("activity.id", ondelete="CASCADE"),
+        nullable=False,
         index=True,
     )
 
