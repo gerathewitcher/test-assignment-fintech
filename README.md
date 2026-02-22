@@ -102,4 +102,4 @@ curl -H "Authorization: Bearer dev-static-api-key" \
   "http://localhost:8000/api/v1/directory/building"
 ```
 
-API key is configured via environment variable `API_KEY` (see `src/config.py`).
+API key is configured via environment variable `API_KEY` in `.env`
