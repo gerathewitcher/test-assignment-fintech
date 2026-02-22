@@ -57,10 +57,9 @@ uv run python scripts/seed_dev_db.py --profile medium --reset
 uv run python scripts/reset_dev_db.py
 ```
 
-6. (Optional) Run integration tests:
+6. Run integration tests:
 
 ```bash
-uv sync --extra test
 task run-integration-tests
 ```
 
