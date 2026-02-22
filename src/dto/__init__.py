@@ -9,6 +9,7 @@ from .dto import (
     PaginatedBuildings,
     PaginatedOrganizations,
     PaginationParams,
+    WithinBoundingBoxFilter,
     WithinRadiusFilter,
 )
 
@@ -24,4 +25,5 @@ __all__ = [
     "PaginatedBuildings",
     "OrganizationActivityFilter",
     "WithinRadiusFilter",
+    "WithinBoundingBoxFilter",
 ]

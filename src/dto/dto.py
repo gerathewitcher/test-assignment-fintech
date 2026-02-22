@@ -13,6 +13,17 @@ class WithinRadiusFilter(BaseModel):
     center_long: float = Field(default=0.0, description="Longitude of the center")
 
 
+class WithinBoundingBoxFilter(BaseModel):
+    """
+    Filter by rectangular area
+    """
+
+    min_lat: float = Field(description="Minimum latitude")
+    max_lat: float = Field(description="Maximum latitude")
+    min_long: float = Field(description="Minimum longitude")
+    max_long: float = Field(description="Maximum longitude")
+
+
 class OrganizationActivityFilter(BaseModel):
     """
     Filter organizations by activity
@@ -37,6 +48,9 @@ class OrganizationFilter(BaseModel):
     )
     within_radius: WithinRadiusFilter | None = Field(
         default=None, description="Filter by radius"
+    )
+    within_bounding_box: WithinBoundingBoxFilter | None = Field(
+        default=None, description="Filter by rectangular area"
     )
     name: str | None = Field(
         default=None, description="filter by name of the organization"
@@ -76,8 +90,8 @@ class Organization(BaseModel):
     building: Building | None = Field(
         description="Building associated with the organization", default=None
     )
-    activity: Activity | None = Field(
-        description="Activity associated with the organization", default=None
+    activities: list[Activity] = Field(
+        description="Activities associated with the organization", default=[]
     )
     phone_numbers: list[OrganizationPhoneNumber] = Field(
         description="Phone numbers associated with the organization"
