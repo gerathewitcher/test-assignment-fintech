@@ -21,6 +21,7 @@ from tests.integration.fixtures.db import (  # noqa: F401
     insert_activity,
     insert_building,
     insert_organization,
+    insert_organization_activity,
     insert_organization_phone,
 )
 

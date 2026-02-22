@@ -33,9 +33,17 @@ class InsertOrganizationFixture(Protocol):
         *,
         name: str,
         building_id: UUID | None,
-        activity_id: UUID | None,
         created_at: datetime,
     ) -> Awaitable[UUID]: ...
+
+
+class InsertOrganizationActivityFixture(Protocol):
+    def __call__(
+        self,
+        *,
+        organization_id: UUID,
+        activity_id: UUID,
+    ) -> Awaitable[None]: ...
 
 
 class InsertOrganizationPhoneFixture(Protocol):
@@ -120,23 +128,44 @@ def insert_organization(
         *,
         name: str,
         building_id: UUID | None,
-        activity_id: UUID | None,
         created_at: datetime,
     ) -> UUID:
         row = await db_conn.fetchrow(
             """
-            INSERT INTO organization (id, name, building_id, activity_id, created_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, $4)
+            INSERT INTO organization (id, name, building_id, created_at)
+            VALUES (gen_random_uuid(), $1, $2, $3)
             RETURNING id
             """,
             name,
             building_id,
-            activity_id,
             created_at,
         )
         if row is None:
             raise RuntimeError("Insert organization failed: no row returned")
         return row["id"]
+
+    return _insert
+
+
+@pytest.fixture
+def insert_organization_activity(
+    db_conn: asyncpg.Connection,
+) -> InsertOrganizationActivityFixture:
+    """Insert organization-activity link row."""
+
+    async def _insert(
+        *,
+        organization_id: UUID,
+        activity_id: UUID,
+    ) -> None:
+        await db_conn.execute(
+            """
+            INSERT INTO organization_activity (organization_id, activity_id)
+            VALUES ($1, $2)
+            """,
+            organization_id,
+            activity_id,
+        )
 
     return _insert
 

@@ -15,6 +15,7 @@ def _url(path: str) -> str:
 
 @pytest.mark.asyncio
 async def test_get_buildings_empty_list(client: AsyncClient) -> None:
+    """Returns empty buildings page when there is no data."""
     response = await client.get(_url("/building"))
 
     assert response.status_code == 200
@@ -28,6 +29,7 @@ async def test_get_buildings_from_factory_insert(
     client: AsyncClient,
     insert_building: InsertBuildingFixture,
 ) -> None:
+    """Returns inserted buildings from the list endpoint."""
     first: BuildingPayload = build_building_payload(index=1)
     second: BuildingPayload = build_building_payload(index=2)
     await insert_building(**first)
@@ -46,6 +48,7 @@ async def test_get_buildings_pagination_with_cursor(
     client: AsyncClient,
     insert_building: InsertBuildingFixture,
 ) -> None:
+    """Paginates buildings with keyset cursor."""
     first: BuildingPayload = build_building_payload(
         index=1, address="Moscow, Cursor St, 1"
     )
@@ -75,6 +78,7 @@ async def test_get_buildings_pagination_with_cursor(
 
 @pytest.mark.asyncio
 async def test_get_buildings_invalid_cursor_returns_400(client: AsyncClient) -> None:
+    """Returns 400 for malformed buildings cursor."""
     response = await client.get(_url("/building?cursor=not-a-valid-cursor"))
 
     assert response.status_code == 400
